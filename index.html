@@ -12,18 +12,266 @@
         <link rel="stylesheet" href="css/fontawesome-all.min.css">
         <link rel="stylesheet" href="css/leaflet.photon.css">
         <style>
-        html, body, #map {
+        html, body {
             width: 100%;
             height: 100%;
             padding: 0;
             margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        }
+        
+        /* Dashboard styles - versión mejorada */
+        #dash {
+            position: absolute;
+            z-index: 9999;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            pointer-events: none;
+        }
+        
+        .dash-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .card {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            border-radius: 14px;
+            padding: 16px 18px;
+            min-width: 220px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.10);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            flex: 1;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+        }
+        
+        .kpi-title {
+            font-size: 12px;
+            opacity: .75;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        
+        .kpi-value {
+            font-size: 28px;
+            font-weight: 800;
+            line-height: 1.1;
+            color: #1a1a1a;
+            margin: 4px 0;
+        }
+        
+        .kpi-sub {
+            font-size: 12px;
+            opacity: .85;
+            margin-top: 6px;
+            color: #666;
+        }
+        
+        #selEstrato {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            background: #fff;
+            font-size: 14px;
+            margin: 8px 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        #selEstrato:hover {
+            border-color: rgba(0, 0, 0, 0.25);
+        }
+        
+        #selEstrato:focus {
+            outline: none;
+            border-color: #0066ff;
+            box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+        }
+        
+        #parroquiasList {
+            margin-top: 10px;
+            font-size: 11px;
+            max-height: 140px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        
+        .parroquia-item {
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .parroquia-item:last-child {
+            border-bottom: none;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        /* Estilo para el total de hogares con color */
+        .total-hogares {
+            position: relative;
+            padding-left: 24px;
+        }
+        
+        .total-hogares::before {
+            content: "🏠";
+            position: absolute;
+            left: 0;
+            font-size: 16px;
+            opacity: 0.6;
+        }
+        
+        /* Animación para actualización de valores */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .updated {
+            animation: pulse 0.3s ease;
+        }
+        
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .dash-row {
+                gap: 8px;
+            }
+            
+            .card {
+                min-width: calc(50% - 16px);
+                padding: 14px;
+            }
+            
+            .kpi-value {
+                font-size: 24px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .card {
+                min-width: 100%;
+            }
+            
+            #dash {
+                top: 8px;
+                left: 8px;
+                right: 8px;
+            }
+        }
+        
+        /* Loading state */
+        .loading {
+            color: #999 !important;
+        }
+        
+        /* Highlight para porcentaje */
+        .highlight {
+            color: #0066ff;
+            font-weight: 600;
+        }
+        
+        /* Mejor visualización para la lista de parroquias */
+        .parroquia-list-container {
+            max-height: 120px;
+            overflow-y: auto;
+            padding-right: 8px;
+            margin-top: 8px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+            padding-top: 8px;
+        }
+        
+        .parroquia-list-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .parroquia-list-container::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 3px;
+        }
+        
+        .parroquia-list-container::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+        
+        .parroquia-list-container::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Estilos para el botón de reset */
+        .leaflet-control-custom {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 2px;
+        }
+        
+        .leaflet-control-custom a {
+            color: #333;
+            text-decoration: none;
+            font-size: 18px;
+            display: block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+        }
+        
+        .leaflet-control-custom a:hover {
+            background-color: #f5f5f5;
         }
         </style>
-        <title></title>
+        <title>Dashboard de Sectores</title>
     </head>
     <body>
-        <div id="map">
+        <!-- Dashboard Container -->
+        <div id="dash">
+            <div class="dash-row">
+                <div class="card">
+                    <div class="kpi-title">Hogares (total)</div>
+                    <div class="kpi-value total-hogares" id="kpiTotal">—</div>
+                    <div class="kpi-sub">Total de hogares en sectores censales</div>
+                </div>
+
+                <div class="card">
+                    <div class="kpi-title">Estrato</div>
+                    <select id="selEstrato">
+                        <option value="ALL">Todos los estratos</option>
+                    </select>
+                    <div class="kpi-sub" id="kpiEstrato">—</div>
+                </div>
+
+                <div class="card">
+                    <div class="kpi-title">Parroquias</div>
+                    <div class="kpi-value" id="kpiParroquias">—</div>
+                    <div class="kpi-sub">
+                        <div id="parroquiasList" class="parroquia-list-container"></div>
+                    </div>
+                </div>
+            </div>
         </div>
+
+        <!-- Mapa -->
+        <div id="map"></div>
+
         <script src="js/qgis2web_expressions.js"></script>
         <script src="js/leaflet.js"></script>
         <script src="js/L.Control.Layers.Tree.min.js"></script>
@@ -37,26 +285,27 @@
         <script src="js/leaflet.photon.js"></script>
         <script src="data/sec_a_simplificado_1.js"></script>
         <script>
-        var map = L.map('map', {
-            zoomControl:false, maxZoom:28, minZoom:1
-        }).fitBounds([[-0.27645400686180915,-78.950520760364],[0.36964139701581517,-77.99379718078238]]);
-        var hash = new L.Hash(map);
-        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
-        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // Variables globales
+        let map;
+        let layer_sec_a_simplificado_1;
+        
+        // ===== FUNCIONES ORIGINALES DEL MAPA =====
+        
         // remove popup's row if "visible-with-data"
         function removeEmptyRowsFromPopupContent(content, feature) {
-         var tempDiv = document.createElement('div');
-         tempDiv.innerHTML = content;
-         var rows = tempDiv.querySelectorAll('tr');
-         for (var i = 0; i < rows.length; i++) {
-             var td = rows[i].querySelector('td.visible-with-data');
-             var key = td ? td.id : '';
-             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
-                 rows[i].parentNode.removeChild(rows[i]);
-             }
-         }
-         return tempDiv.innerHTML;
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            var rows = tempDiv.querySelectorAll('tr');
+            for (var i = 0; i < rows.length; i++) {
+                var td = rows[i].querySelector('td.visible-with-data');
+                var key = td ? td.id : '';
+                if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                    rows[i].parentNode.removeChild(rows[i]);
+                }
+            }
+            return tempDiv.innerHTML;
         }
+        
         // modify popup if contains media
         function addClassToPopupIfMedia(content, popup) {
             var tempDiv = document.createElement('div');
@@ -89,7 +338,6 @@
                     video.style.maxWidth = "60vw";
                     imgTd.parentNode.replaceChild(video, imgTd);
                     popup._contentNode.classList.add('media');
-                    // Aggiorna il popup quando il video carica i metadati
                     video.addEventListener('loadedmetadata', function() {
                         popup.update();
                     });
@@ -104,25 +352,7 @@
                 popup._contentNode.classList.remove('media');
             }
         }
-        var zoomControl = L.control.zoom({
-            position: 'topleft'
-        }).addTo(map);
-        var bounds_group = new L.featureGroup([]);
-        function setBounds() {
-        }
-        map.createPane('pane_OpenStreetMap_0');
-        map.getPane('pane_OpenStreetMap_0').style.zIndex = 400;
-        var layer_OpenStreetMap_0 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            pane: 'pane_OpenStreetMap_0',
-            opacity: 1.0,
-            attribution: '',
-            minZoom: 1,
-            maxZoom: 28,
-            minNativeZoom: 0,
-            maxNativeZoom: 19
-        });
-        layer_OpenStreetMap_0;
-        map.addLayer(layer_OpenStreetMap_0);
+        
         function pop_sec_a_simplificado_1(feature, layer) {
             var popupContent = '<table>\
                     <tr>\
@@ -167,104 +397,277 @@
                     </tr>\
                 </table>';
             var content = removeEmptyRowsFromPopupContent(popupContent, feature);
-			layer.on('popupopen', function(e) {
-				addClassToPopupIfMedia(content, e.popup);
-			});
-			layer.bindPopup(content, { maxHeight: 400 });
+            layer.on('popupopen', function(e) {
+                addClassToPopupIfMedia(content, e.popup);
+            });
+            layer.bindPopup(content, { maxHeight: 400 });
         }
-
+        
         function style_sec_a_simplificado_1_0(feature) {
             switch(String(feature.properties['sec_estrato_sector'])) {
                 case 'B':
                     return {
-                pane: 'pane_sec_a_simplificado_1',
-                opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
-                dashArray: '',
-                lineCap: 'butt',
-                lineJoin: 'miter',
-                weight: 1.0, 
-                fill: true,
-                fillOpacity: 1,
-                fillColor: 'rgba(49,200,89,0.25882352941176473)',
-                interactive: true,
-            }
-                    break;
+                        pane: 'pane_sec_a_simplificado_1',
+                        opacity: 1,
+                        color: 'rgba(35,35,35,1.0)',
+                        dashArray: '',
+                        lineCap: 'butt',
+                        lineJoin: 'miter',
+                        weight: 1.0, 
+                        fill: true,
+                        fillOpacity: 1,
+                        fillColor: 'rgba(49,200,89,0.25882352941176473)',
+                        interactive: true,
+                    };
                 case 'C+':
                     return {
-                pane: 'pane_sec_a_simplificado_1',
-                opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
-                dashArray: '',
-                lineCap: 'butt',
-                lineJoin: 'miter',
-                weight: 1.0, 
-                fill: true,
-                fillOpacity: 1,
-                fillColor: 'rgba(223,57,181,0.26666666666666666)',
-                interactive: true,
-            }
-                    break;
+                        pane: 'pane_sec_a_simplificado_1',
+                        opacity: 1,
+                        color: 'rgba(35,35,35,1.0)',
+                        dashArray: '',
+                        lineCap: 'butt',
+                        lineJoin: 'miter',
+                        weight: 1.0, 
+                        fill: true,
+                        fillOpacity: 1,
+                        fillColor: 'rgba(223,57,181,0.26666666666666666)',
+                        interactive: true,
+                    };
                 case 'C-':
                     return {
-                pane: 'pane_sec_a_simplificado_1',
-                opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
-                dashArray: '',
-                lineCap: 'butt',
-                lineJoin: 'miter',
-                weight: 1.0, 
-                fill: true,
-                fillOpacity: 1,
-                fillColor: 'rgba(105,131,215,0.25882352941176473)',
-                interactive: true,
-            }
-                    break;
+                        pane: 'pane_sec_a_simplificado_1',
+                        opacity: 1,
+                        color: 'rgba(35,35,35,1.0)',
+                        dashArray: '',
+                        lineCap: 'butt',
+                        lineJoin: 'miter',
+                        weight: 1.0, 
+                        fill: true,
+                        fillOpacity: 1,
+                        fillColor: 'rgba(105,131,215,0.25882352941176473)',
+                        interactive: true,
+                    };
                 default:
                     return {
-                pane: 'pane_sec_a_simplificado_1',
-                opacity: 1,
-                color: 'rgba(35,35,35,1.0)',
-                dashArray: '',
-                lineCap: 'butt',
-                lineJoin: 'miter',
-                weight: 1.0, 
-                fill: true,
-                fillOpacity: 1,
-                fillColor: 'rgba(225,178,35,1.0)',
-                interactive: true,
-            }
-                    break;
+                        pane: 'pane_sec_a_simplificado_1',
+                        opacity: 1,
+                        color: 'rgba(35,35,35,1.0)',
+                        dashArray: '',
+                        lineCap: 'butt',
+                        lineJoin: 'miter',
+                        weight: 1.0, 
+                        fill: true,
+                        fillOpacity: 1,
+                        fillColor: 'rgba(225,178,35,1.0)',
+                        interactive: true,
+                    };
             }
         }
-        map.createPane('pane_sec_a_simplificado_1');
-        map.getPane('pane_sec_a_simplificado_1').style.zIndex = 401;
-        map.getPane('pane_sec_a_simplificado_1').style['mix-blend-mode'] = 'normal';
-        var layer_sec_a_simplificado_1 = new L.geoJson(json_sec_a_simplificado_1, {
-            attribution: '',
-            interactive: true,
-            dataVar: 'json_sec_a_simplificado_1',
-            layerName: 'layer_sec_a_simplificado_1',
-            pane: 'pane_sec_a_simplificado_1',
-            onEachFeature: pop_sec_a_simplificado_1,
-            style: style_sec_a_simplificado_1_0,
+        
+        // ===== FUNCIONES DEL DASHBOARD =====
+        
+        // Función para formatear números
+        function fmtInt(n){ 
+            return (n || 0).toLocaleString('es-EC'); 
+        }
+        
+        // Función para obtener valores únicos y ordenados
+        function uniq(arr){ 
+            return Array.from(new Set(arr)).sort(); 
+        }
+        
+        // Función para calcular estadísticas
+        function computeStats(features){
+            let totalHogares = 0;
+            const byEstrato = {};         // { 'B': hogares, 'C+': hogares, ... }
+            const parroquiasByEstrato = {}; // { 'B': Set([...]), ... }
+
+            features.forEach(f => {
+                const p = f.properties || {};
+                const estr = (p.sec_estrato_sector ?? 'SIN_DATO').toString().trim() || 'SIN_DATO';
+                const hogares = Number(p.sec_hogares ?? 0) || 0;
+                const parroquia = (p.parroquia ?? 'SIN_PARROQUIA').toString().trim();
+
+                totalHogares += hogares;
+                byEstrato[estr] = (byEstrato[estr] || 0) + hogares;
+
+                if(!parroquiasByEstrato[estr]) parroquiasByEstrato[estr] = new Set();
+                parroquiasByEstrato[estr].add(parroquia);
+            });
+
+            return { totalHogares, byEstrato, parroquiasByEstrato };
+        }
+        
+        // ===== INICIALIZAR MAPA Y DASHBOARD =====
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inicializar el mapa
+            map = L.map('map', {
+                zoomControl: false, 
+                maxZoom: 28, 
+                minZoom: 1
+            }).fitBounds([[-0.27645400686180915,-78.950520760364],[0.36964139701581517,-77.99379718078238]]);
+            
+            var hash = new L.Hash(map);
+            map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> · <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> · <a href="https://qgis.org">QGIS</a>');
+            
+            var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+            
+            var zoomControl = L.control.zoom({
+                position: 'topleft'
+            }).addTo(map);
+            
+            map.createPane('pane_OpenStreetMap_0');
+            map.getPane('pane_OpenStreetMap_0').style.zIndex = 400;
+            var layer_OpenStreetMap_0 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                pane: 'pane_OpenStreetMap_0',
+                opacity: 1.0,
+                attribution: '',
+                minZoom: 1,
+                maxZoom: 28,
+                minNativeZoom: 0,
+                maxNativeZoom: 19
+            });
+            map.addLayer(layer_OpenStreetMap_0);
+            
+            // Crear capa vacía inicialmente (se llenará con applyFilter)
+            map.createPane('pane_sec_a_simplificado_1');
+            map.getPane('pane_sec_a_simplificado_1').style.zIndex = 401;
+            map.getPane('pane_sec_a_simplificado_1').style['mix-blend-mode'] = 'normal';
+            
+            layer_sec_a_simplificado_1 = new L.geoJson(null, {
+                attribution: '',
+                interactive: true,
+                dataVar: 'json_sec_a_simplificado_1',
+                layerName: 'layer_sec_a_simplificado_1',
+                pane: 'pane_sec_a_simplificado_1',
+                onEachFeature: pop_sec_a_simplificado_1,
+                style: style_sec_a_simplificado_1_0,
+            });
+            
+            map.addLayer(layer_sec_a_simplificado_1);
+            
+            // Configurar control de capas
+            var overlaysTree = [
+                {label: 'sec_a_simplificado<br /><table><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_B0.png" /></td><td>B</td></tr><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_C1.png" /></td><td>C+</td></tr><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_C2.png" /></td><td>C-</td></tr><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_3.png" /></td><td></td></tr></table>', layer: layer_sec_a_simplificado_1},
+                {label: "OpenStreetMap", layer: layer_OpenStreetMap_0, radioGroup: 'bm' },
+            ];
+            
+            var lay = L.control.layers.tree(null, overlaysTree, {
+                collapsed: true,
+            });
+            lay.addTo(map);
+            
+            // ===== CONFIGURAR DASHBOARD =====
+            const allFeatures = (json_sec_a_simplificado_1.features || []);
+            const statsAll = computeStats(allFeatures);
+            
+            // Llenar combo estratos
+            const sel = document.getElementById('selEstrato');
+            
+            // Agregar opciones de estratos ordenadas
+            uniq(Object.keys(statsAll.byEstrato)).forEach(k => {
+                const opt = document.createElement('option');
+                opt.value = k;
+                const hogaresEstrato = statsAll.byEstrato[k] || 0;
+                opt.textContent = `${k} (${fmtInt(hogaresEstrato)} hogares)`;
+                sel.appendChild(opt);
+            });
+            
+            // Actualizar KPI total
+            document.getElementById('kpiTotal').textContent = fmtInt(statsAll.totalHogares);
+            
+            function applyFilter(estrato) {
+                // Filtrar capa en el mapa
+                layer_sec_a_simplificado_1.clearLayers();
+                
+                const feats = (estrato === 'ALL')
+                    ? allFeatures
+                    : allFeatures.filter(f => {
+                        const estratoFeature = (f.properties?.sec_estrato_sector ?? 'SIN_DATO').toString().trim();
+                        return estratoFeature === estrato;
+                    });
+                
+                // Agregar features filtrados al mapa
+                if (feats.length > 0) {
+                    layer_sec_a_simplificado_1.addData({
+                        type: "FeatureCollection",
+                        features: feats
+                    });
+                }
+                
+                // Recalcular KPIs del filtro
+                const st = computeStats(feats);
+                const pct = statsAll.totalHogares ? (st.totalHogares / statsAll.totalHogares * 100) : 0;
+                
+                // Actualizar KPI de estrato
+                const kpiEstratoElem = document.getElementById('kpiEstrato');
+                if (estrato === 'ALL') {
+                    kpiEstratoElem.innerHTML = `Mostrando todo (<span class="highlight">100%</span>)`;
+                } else {
+                    kpiEstratoElem.innerHTML = 
+                        `${fmtInt(st.totalHogares)} hogares (<span class="highlight">${pct.toFixed(1)}%</span>)`;
+                }
+                
+                // Actualizar KPI de parroquias
+                const parroquias = uniq(
+                    feats.map(f => (f.properties?.parroquia ?? 'SIN_PARROQUIA').toString().trim())
+                );
+                
+                document.getElementById('kpiParroquias').textContent = fmtInt(parroquias.length);
+                
+                // Actualizar lista de parroquias
+                const parroquiasList = document.getElementById('parroquiasList');
+                const maxItems = 50; // Mostrar máximo 50 parroquias
+                
+                if (parroquias.length === 0) {
+                    parroquiasList.innerHTML = '<em>No hay datos</em>';
+                } else if (parroquias.length <= maxItems) {
+                    parroquiasList.innerHTML = parroquias.map(x => `• ${x}`).join('<br>');
+                } else {
+                    const firstItems = parroquias.slice(0, maxItems);
+                    parroquiasList.innerHTML = 
+                        firstItems.map(x => `• ${x}`).join('<br>') + 
+                        `<br><em>... y ${parroquias.length - maxItems} más</em>`;
+                }
+                
+                // Animación de actualización
+                const kpiParroquiasElem = document.getElementById('kpiParroquias');
+                kpiParroquiasElem.classList.add('updated');
+                setTimeout(() => kpiParroquiasElem.classList.remove('updated'), 300);
+            }
+            
+            // Configurar event listener para el select
+            sel.addEventListener('change', () => applyFilter(sel.value));
+            
+            // Aplicar filtro inicial
+            applyFilter('ALL');
+            
+            // Ajustar posición de controles para no interferir con el dashboard
+            map.zoomControl.setPosition('topright');
+            
+            // Agregar botón para resetear filtro (sin EasyButton)
+            var resetControl = L.control({position: 'topright'});
+            resetControl.onAdd = function(map) {
+                var div = L.DomUtil.create('div', 'leaflet-control leaflet-bar leaflet-control-custom');
+                div.innerHTML = '<a href="#" title="Resetear filtro" style="display: block; width: 28px; height: 28px; line-height: 28px; text-align: center; font-size: 18px;">↺</a>';
+                
+                L.DomEvent.on(div, 'click', function(e) {
+                    L.DomEvent.stopPropagation(e);
+                    L.DomEvent.preventDefault(e);
+                    sel.value = 'ALL';
+                    applyFilter('ALL');
+                });
+                
+                return div;
+            };
+            resetControl.addTo(map);
+            
+            // Función para ajustar bounds (si existe)
+            if (typeof setBounds === 'function') {
+                setBounds();
+            }
         });
-        bounds_group.addLayer(layer_sec_a_simplificado_1);
-        map.addLayer(layer_sec_a_simplificado_1);
-        var overlaysTree = [
-            {label: 'sec_a_simplificado<br /><table><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_B0.png" /></td><td>B</td></tr><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_C1.png" /></td><td>C+</td></tr><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_C2.png" /></td><td>C-</td></tr><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_3.png" /></td><td></td></tr></table>', layer: layer_sec_a_simplificado_1},
-            {label: "OpenStreetMap", layer: layer_OpenStreetMap_0, radioGroup: 'bm' },]
-        var lay = L.control.layers.tree(null, overlaysTree,{
-            //namedToggle: true,
-            //selectorBack: false,
-            //closedSymbol: '&#8862; &#x1f5c0;',
-            //openedSymbol: '&#8863; &#x1f5c1;',
-            //collapseAll: 'Collapse all',
-            //expandAll: 'Expand all',
-            collapsed: true,
-        });
-        lay.addTo(map);
-        setBounds();
         </script>        
     </body>
 </html>
