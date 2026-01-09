@@ -173,14 +173,12 @@
 
       <div class="card">
         <div class="h1" style="font-size:14px;margin-bottom:6px">Parroquias dentro del filtro</div>
-        <div class="muted">Se muestran las parroquias en cada categoría <b>parroquia</b>.</div>
+        <div class="muted">Se muestran las parroquias (nombre) según el código <b>parroquia</b>.</div>
         <ul class="list" id="listaParroquias"></ul>
       </div>
 
       <div class="card">
-        <div class="muted">
-          Autor: Econ. Marco Acosta G
-        </div>
+        <div class="muted">Autor: Econ. Marco Acosta G</div>
       </div>
     </aside>
 
@@ -205,7 +203,7 @@
 
   <script>
     // =============================
-    // MAPA (igual que qgis2web, con mínimos cambios)
+    // MAPA (qgis2web + dashboard)
     // =============================
     var map = L.map('map', { zoomControl:false, maxZoom:28, minZoom:1 })
       .fitBounds([[-0.27645400686180915,-78.950520760364],[0.36964139701581517,-77.99379718078238]]);
@@ -269,15 +267,100 @@
     });
     map.addLayer(layer_OpenStreetMap_0);
 
+    // =============================
+    // DICCIONARIO PARROQUIAS (código -> nombre)
+    // =============================
+    const PARROQUIAS_DMQ = {
+      "170101":"Belisario Quevedo",
+      "170102":"Carcelén",
+      "170103":"Centro Histórico",
+      "170104":"Cochapamba",
+      "170105":"Comité del Pueblo",
+      "170106":"Cotocollao",
+      "170107":"Chilibulo",
+      "170108":"Chillogallo",
+      "170109":"Chimbacalle",
+      "170110":"El Condado",
+      "170111":"Guamaní",
+      "170112":"Iñaquito",
+      "170113":"Itchimbía",
+      "170114":"Jipijapa",
+      "170115":"Kennedy",
+      "170116":"La Argelia",
+      "170117":"La Concepción",
+      "170118":"La Ecuatoriana",
+      "170119":"La Ferroviaria",
+      "170120":"La Libertad",
+      "170121":"La Magdalena",
+      "170122":"La Mena",
+      "170123":"Mariscal Sucre",
+      "170124":"Ponceano",
+      "170125":"Puengasí",
+      "170126":"Quitumbe",
+      "170127":"Rumipamba",
+      "170128":"San Bartolo",
+      "170129":"San Isidro del Inca",
+      "170130":"San Juan",
+      "170131":"Solanda",
+      "170132":"Turubamba",
+
+      "170151":"Alangasí",
+      "170152":"Amaguaña",
+      "170153":"Atahualpa",
+      "170154":"Calacalí",
+      "170155":"Calderón",
+      "170156":"Conocoto",
+      "170157":"Cumbayá",
+      "170158":"Chávezpamba",
+      "170159":"Checa",
+      "170160":"El Quinche",
+      "170161":"Gualea",
+      "170162":"Guangopolo",
+      "170163":"Guayllabamba",
+      "170164":"La Merced",
+      "170165":"Llano Chico",
+      "170166":"Lloa",
+      "170168":"Nanegal",
+      "170169":"Nanegalito",
+      "170170":"Nayón",
+      "170171":"Nono",
+      "170172":"Pacto",
+      "170174":"Perucho",
+      "170175":"Pifo",
+      "170176":"Píntag",
+      "170177":"Pomasqui",
+      "170178":"Puéllaro",
+      "170179":"Puembo",
+      "170180":"San Antonio",
+      "170181":"San José de Minas",
+      "170183":"Tababela",
+      "170184":"Tumbaco",
+      "170185":"Yaruquí",
+      "170186":"Zámbiza"
+    };
+
+    function parroquiaNombre(codigo) {
+      if (codigo == null) return "";
+      const k = String(codigo).trim();
+      return PARROQUIAS_DMQ[k] || k; // si no está en el diccionario, deja el código
+    }
+
+    // =============================
+    // POPUP (muestra nombre de parroquia)
+    // =============================
     function pop_sec_a_simplificado_1(feature, layer) {
       var p = feature.properties || {};
-      var popupContent = '<table>\
-          <tr><th scope="row">sec</th><td class="visible-with-data" id="sec">' + (p.sec != null ? autolinker.link(String(p.sec)) : '') + '</td></tr>\
-          <tr><th scope="row">parroquia</th><td>' + (p.parroquia != null ? autolinker.link(String(p.parroquia)) : '') + '</td></tr>\
-          <tr><th scope="row">estrato</th><td>' + (p.sec_estrato_sector != null ? autolinker.link(String(p.sec_estrato_sector)) : '') + '</td></tr>\
-          <tr><th scope="row">hogares</th><td>' + (p.sec_hogares != null ? autolinker.link(String(p.sec_hogares)) : '') + '</td></tr>\
-          <tr><th scope="row">puntaje prom</th><td class="visible-with-data" id="sec_puntaje_prom">' + (p.sec_puntaje_prom != null ? autolinker.link(String(p.sec_puntaje_prom)) : '') + '</td></tr>\
-        </table>';
+      var parCode = (p.parroquia != null ? String(p.parroquia).trim() : "");
+      var parName = parroquiaNombre(parCode);
+
+      var popupContent =
+        '<table>' +
+          '<tr><th scope="row">sec</th><td class="visible-with-data" id="sec">' + (p.sec != null ? autolinker.link(String(p.sec)) : '') + '</td></tr>' +
+          '<tr><th scope="row">parroquia</th><td>' + (parName ? autolinker.link(parName) : '') + (parCode && parName !== parCode ? ' <span style="color:rgba(0,0,0,.55)">( ' + parCode + ' )</span>' : '') + '</td></tr>' +
+          '<tr><th scope="row">estrato</th><td>' + (p.sec_estrato_sector != null ? autolinker.link(String(p.sec_estrato_sector)) : '') + '</td></tr>' +
+          '<tr><th scope="row">hogares</th><td>' + (p.sec_hogares != null ? autolinker.link(String(p.sec_hogares)) : '') + '</td></tr>' +
+          '<tr><th scope="row">puntaje prom</th><td class="visible-with-data" id="sec_puntaje_prom">' + (p.sec_puntaje_prom != null ? autolinker.link(String(p.sec_puntaje_prom)) : '') + '</td></tr>' +
+        '</table>';
 
       var content = removeEmptyRowsFromPopupContent(popupContent, feature);
       layer.on('popupopen', function(e) { addClassToPopupIfMedia(content, e.popup); });
@@ -324,7 +407,7 @@
     setBounds();
 
     // =============================
-    // DASHBOARD + FILTRO
+    // DASHBOARD + FILTRO (parroquias con nombre)
     // =============================
     function toNumber(x) {
       if (x == null) return 0;
@@ -345,7 +428,6 @@
       return new Intl.NumberFormat('es-EC', { maximumFractionDigits: 1 }).format(n) + '%';
     }
 
-    // Construye catálogo de categorías desde el GeoJSON
     function getAllCategories() {
       var set = new Set();
       (json_sec_a_simplificado_1.features || []).forEach(function(f) {
@@ -355,7 +437,6 @@
       return Array.from(set).sort();
     }
 
-    // Totales por categoría (hogares)
     function totalsByCategory() {
       var out = {};
       (json_sec_a_simplificado_1.features || []).forEach(function(f) {
@@ -375,16 +456,20 @@
       return t;
     }
 
+    // DEVUELVE nombres (no códigos)
     function uniqueParroquiasByFilter(catFilter) {
       var s = new Set();
       (json_sec_a_simplificado_1.features || []).forEach(function(f) {
         var p = f.properties || {};
         var cat = normCat(p.sec_estrato_sector);
         if (catFilter === '__ALL__' || cat === catFilter) {
-          if (p.parroquia != null && String(p.parroquia).trim() !== '') s.add(String(p.parroquia).trim());
+          var code = (p.parroquia != null ? String(p.parroquia).trim() : "");
+          if (code) s.add(parroquiaNombre(code));
         }
       });
-      return Array.from(s).sort();
+      return Array.from(s).sort(function(a,b){
+        return a.localeCompare(b,'es',{sensitivity:'base'});
+      });
     }
 
     function hogaresByFilter(catFilter) {
@@ -400,7 +485,6 @@
     }
 
     function applyFilterToLayer(catFilter) {
-      // resalta el filtro; lo demás queda transparente
       layer_sec_a_simplificado_1.setStyle(function(feature) {
         var base = style_sec_a_simplificado_1_0(feature);
         if (catFilter === '__ALL__') return base;
@@ -425,7 +509,6 @@
       var pill = (catFilter === '__ALL__') ? 'Todos' : catFilter;
       document.getElementById('pillFiltro').textContent = pill;
 
-      // Tabla por categorías (siempre global para comparación)
       var tb = document.getElementById('tablaEstratos');
       tb.innerHTML = '';
       var byCat = totalsByCategory();
@@ -438,32 +521,31 @@
         tb.appendChild(tr);
       });
 
-      // Parroquias del filtro
-      var parroquias = uniqueParroquiasByFilter(catFilter);
+      var arrParroquias = uniqueParroquiasByFilter(catFilter);
       var ul = document.getElementById('listaParroquias');
       ul.innerHTML = '';
-      if (parroquias.length === 0) {
+
+      if (arrParroquias.length === 0) {
         var li = document.createElement('li');
         li.className = 'muted';
         li.textContent = 'No hay parroquias para este filtro.';
         ul.appendChild(li);
       } else {
-        parroquias.slice(0, 120).forEach(function(px) {
+        arrParroquias.slice(0, 120).forEach(function(nombre) {
           var li = document.createElement('li');
           li.className = 'tag';
-          li.textContent = px;
+          li.textContent = nombre;
           ul.appendChild(li);
         });
-        if (parroquias.length > 120) {
+        if (arrParroquias.length > 120) {
           var liMore = document.createElement('li');
           liMore.className = 'muted';
-          liMore.textContent = '… + ' + (parroquias.length - 120) + ' más';
+          liMore.textContent = '… + ' + (arrParroquias.length - 120) + ' más';
           ul.appendChild(liMore);
         }
       }
     }
 
-    // Inicializa selector
     (function initUI() {
       var sel = document.getElementById('filtroEstrato');
       getAllCategories().forEach(function(cat) {
@@ -485,10 +567,8 @@
         doApply();
       });
 
-      // auto-aplicar al cambiar (opcional)
       sel.addEventListener('change', doApply);
 
-      // primera carga
       applyFilterToLayer('__ALL__');
       renderDashboard('__ALL__');
     })();
