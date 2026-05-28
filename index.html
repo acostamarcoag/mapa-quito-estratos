@@ -80,6 +80,7 @@
       font-size: 13px;
     }
     .btn.primary { background: #111827; color: #fff; border-color: #111827; }
+    .btn.active  { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
     .btn:active { transform: translateY(1px); }
     .btn:disabled { opacity: .45; cursor: not-allowed; }
 
@@ -111,11 +112,51 @@
     .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .tip { margin-top: 8px; font-size: 12px; color: rgba(0,0,0,.55); line-height: 1.35; }
 
+    /* Toggle de capas */
+    .layerToggle {
+      display: flex;
+      gap: 6px;
+    }
+    .layerToggle .btn {
+      flex: 1;
+      padding: 8px 6px;
+      font-size: 12px;
+    }
+
+    /* Indicador visual de barrio en la leyenda */
+    .leyendaBarrio {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    .leyendaBarrio .linea {
+      width: 32px;
+      height: 3px;
+      background: #1d4ed8;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    /* Tooltip barrios en el mapa */
+    .barrio-tooltip {
+      background: rgba(255,255,255,0.95);
+      border: 1.5px solid #1d4ed8;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1d4ed8;
+      box-shadow: 0 2px 8px rgba(0,0,0,.15);
+    }
+    .barrio-tooltip::before { display: none; }
+
     @media (max-width: 900px) { #sidebar { width: 320px; } }
     @media (max-width: 720px) {
       #app { flex-direction: column; }
       #sidebar { width: 100%; max-width: none; border-right: none; border-bottom: 1px solid rgba(0,0,0,.08); }
-      #map { height: calc(100vh - 520px); min-height: 320px; }
+      #map { height: calc(100vh - 580px); min-height: 320px; }
     }
   </style>
 </head>
@@ -125,9 +166,31 @@
     <aside id="sidebar">
       <div class="card">
         <div class="h1">Dashboard · Estratificación DMQ</div>
-        <div class="muted">Mapa interactivo (versión inicial). Filtra por estrato y mira hogares + parroquias.</div>
+        <div class="muted">Mapa interactivo. Filtra por estrato, explora sectores censales y barrios del DMQ.</div>
       </div>
 
+      <!-- TOGGLE CAPAS -->
+      <div class="card">
+        <div class="h1" style="font-size:13px;margin-bottom:8px">Vista de capas</div>
+        <div class="layerToggle">
+          <button class="btn primary" id="btnCapaSectores" title="Mostrar sectores censales">
+            📍 Sectores
+          </button>
+          <button class="btn" id="btnCapaBarrios" title="Mostrar límites de barrios">
+            🏘 Barrios
+          </button>
+        </div>
+        <div class="leyendaBarrio" id="leyendaBarrioWrap" style="display:none">
+          <div class="linea"></div>
+          <span>Límites de barrios activos</span>
+        </div>
+        <div class="muted" style="margin-top:6px" id="barriosInfo">
+          Activa la capa de barrios para ver los límites en el mapa.<br>
+          Al pasar el cursor sobre el mapa verás el nombre del barrio.
+        </div>
+      </div>
+
+      <!-- FILTRO ESTRATO -->
       <div class="card">
         <label for="filtroEstrato">Filtro de estrato</label>
         <select id="filtroEstrato">
@@ -145,6 +208,7 @@
         </div>
       </div>
 
+      <!-- KPIs -->
       <div class="card">
         <div class="kpiRow">
           <div class="kpi">
@@ -159,6 +223,7 @@
         <div class="muted" style="margin-top:8px">Total hogares (dataset): <b id="kpiHogaresTotal">—</b></div>
       </div>
 
+      <!-- TABLA ESTRATOS -->
       <div class="card">
         <div class="h1" style="font-size:14px;margin-bottom:8px">Hogares por estrato</div>
         <table>
@@ -175,13 +240,14 @@
         </table>
       </div>
 
+      <!-- PARROQUIAS -->
       <div class="card">
         <div class="h1" style="font-size:14px;margin-bottom:6px">Parroquias dentro del filtro</div>
-        <div class="muted">Se muestran las parroquias (nombre) según el código <b>parroquia</b>.</div>
+        <div class="muted">Se muestran las parroquias según el código <b>parroquia</b>.</div>
         <ul class="list" id="listaParroquias"></ul>
       </div>
 
-      <!-- IR A UN PUNTO (igual al de Guayaquil) -->
+      <!-- IR A UN PUNTO -->
       <div class="card">
         <div class="h1" style="font-size:14px;margin-bottom:6px">Ir a un punto</div>
         <div class="muted" style="margin-bottom:8px">Latitud, Longitud (ej: -0.2201, -78.5123)</div>
@@ -205,12 +271,12 @@
         </div>
 
         <div class="tip">
-          Tip: también puedes hacer clic en el mapa para marcar un punto, ver el detalle del sector y habilitar Street View.
+          Tip: también puedes hacer clic en el mapa para marcar un punto y habilitar Street View.
         </div>
       </div>
 
       <div class="card">
-        <div class="muted">Autor: Econ. Marco Acosta G</div>
+        <div class="muted">Autor: Econ. Marco Acosta G · Acosconsulting</div>
       </div>
     </aside>
 
@@ -230,8 +296,42 @@
   <script src="js/labels.js"></script>
   <script src="js/leaflet.photon.js"></script>
 
-  <!-- Data -->
+  <!-- Data capas -->
   <script src="data/sec_a_simplificado_1.js"></script>
+
+  <!--
+    ====================================================================
+    INSTRUCCIONES PARA AGREGAR LA CAPA DE BARRIOS:
+
+    1. En QGIS, click derecho en tu capa de barrios con datos unidos
+       → Exportar → Guardar entidades como...
+       → Formato: GeoJSON
+       → Nombre del archivo: barrios_temp.geojson
+       → CRS: EPSG:4326 (WGS 84)
+       → OK
+
+    2. Abre barrios_temp.geojson con un editor de texto (Notepad++, VS Code)
+       → Al INICIO del archivo agrega exactamente: var json_barrios =
+       → Al FINAL del archivo agrega: ;
+       → Guarda el archivo como: barrios.js
+       → Colócalo en la carpeta data/ del repositorio
+
+    3. Descomenta la siguiente línea:
+    ====================================================================
+  -->
+  <script src="data/barrios.js"></script>
+  <!--
+    ====================================================================
+    CAMPOS ESPERADOS en el GeoJSON de barrios (ajusta si es necesario):
+      - "nombre"     → nombre del barrio (ej: "La Floresta")
+      - "estrato"    → estrato dominante del barrio (ej: "B", "C+", "C-")
+      - "hogares"    → total de hogares del barrio (número)
+      - "n_sectores" → número de sectores censales dentro del barrio
+
+    Si tus campos tienen nombres distintos, edita la función
+    getBarrioProp() más abajo para ajustar los nombres alternativos.
+    ====================================================================
+  -->
 
   <script>
     /* ============================
@@ -312,13 +412,49 @@
       return n ? n : c;
     }
 
-    // =============================
-    // HELPERS (coords, urls, marker)
-    // =============================
+    /* ============================
+       Helper para leer propiedades
+       con nombres alternativos
+    ============================ */
+    function getBarrioProp(props) {
+      /* Ajusta los nombres de campo si tu GeoJSON usa nombres distintos.
+         El orden de cada array es: primero el campo más probable, luego alternativas. */
+      return {
+        nombre:     first(props, ['nombre','NOMBRE','NOM_BARRIO','name','barrio_nombre','nom_barr']),
+        estrato:    first(props, ['estrato','ESTRATO','sec_estrato_sector','estrato_dom']),
+        hogares:    first(props, ['hogares','HOGARES','sec_hogares','total_hogares','tot_hogares']),
+        nSectores:  first(props, ['n_sectores','N_SECTORES','nsectores','num_sectores','count'])
+      };
+    }
+
+    function first(obj, keys) {
+      for (var i = 0; i < keys.length; i++) {
+        if (obj[keys[i]] != null && String(obj[keys[i]]).trim() !== '') return obj[keys[i]];
+      }
+      return null;
+    }
+
+    /* ============================
+       Colores por estrato
+    ============================ */
+    var ESTRATO_COLORS = {
+      'B':   { fill: 'rgba(49,200,89,0.25)',  border: 'rgba(22,130,55,1)'   },
+      'C+':  { fill: 'rgba(223,57,181,0.27)', border: 'rgba(160,20,130,1)'  },
+      'C-':  { fill: 'rgba(105,131,215,0.26)',border: 'rgba(55,80,170,1)'   },
+      '__':  { fill: 'rgba(225,178,35,1)',     border: 'rgba(160,120,10,1)'  }
+    };
+    function estratoColors(e) {
+      return ESTRATO_COLORS[e] || ESTRATO_COLORS['__'];
+    }
+
+    /* ============================
+       HELPERS generales
+    ============================ */
     function fmtCoord(x){ return Number(x).toFixed(6); }
+    function fmtInt(n) { return new Intl.NumberFormat('es-EC', { maximumFractionDigits: 0 }).format(n); }
+    function fmtPct(n) { return new Intl.NumberFormat('es-EC', { maximumFractionDigits: 1 }).format(n) + '%'; }
 
     function streetViewUrl(lat, lng){
-      // Esto abre Street View si existe cobertura (Google lo decide)
       return "https://www.google.com/maps?q=&layer=c&cbll=" + encodeURIComponent(lat + "," + lng);
     }
 
@@ -328,15 +464,8 @@
 
     function setPoint(latlng){
       lastPointLatLng = latlng;
-
-      if (!pointMarker){
-        pointMarker = L.marker(latlng, { draggable: false });
-        pointMarker.addTo(map);
-      } else {
-        pointMarker.setLatLng(latlng);
-      }
-
-      // habilita Street View en sidebar
+      if (!pointMarker){ pointMarker = L.marker(latlng, { draggable: false }); pointMarker.addTo(map); }
+      else { pointMarker.setLatLng(latlng); }
       var btnStreet = document.getElementById('btnStreet');
       btnStreet.disabled = false;
       btnStreet.classList.add('primary');
@@ -344,72 +473,67 @@
 
     function parseLatLon(str){
       if (!str) return null;
-      var s = String(str).trim();
-      s = s.replace(/[()]/g,'');
+      var s = String(str).trim().replace(/[()]/g,'');
       var parts = s.split(/[,\s]+/).filter(Boolean);
       if (parts.length < 2) return null;
-      var lat = Number(parts[0]);
-      var lng = Number(parts[1]);
+      var lat = Number(parts[0]), lng = Number(parts[1]);
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
       return L.latLng(lat, lng);
     }
 
     function updateHashTo(latlng, z){
-      // #zoom/lat/lng
       var zz = Number(z);
       if (!Number.isFinite(zz)) zz = map.getZoom();
       location.hash = "#" + zz + "/" + fmtCoord(latlng.lat) + "/" + fmtCoord(latlng.lng);
     }
 
-    // =============================
-    // MAPA
-    // =============================
+    /* ============================
+       MAPA
+    ============================ */
     var map = L.map('map', { zoomControl:false, maxZoom:28, minZoom:1 })
       .fitBounds([[-0.27645400686180915,-78.950520760364],[0.36964139701581517,-77.99379718078238]]);
 
     var hash = new L.Hash(map);
     map.attributionControl.setPrefix(
       '<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; ' +
-      '<a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; ' +
+      '<a href="https://leafletjs.com">Leaflet</a> &middot; ' +
       '<a href="https://qgis.org">QGIS</a>'
     );
 
     var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
-
     L.control.zoom({ position: 'topleft' }).addTo(map);
 
+    /* --- Capa base OSM --- */
     map.createPane('pane_OpenStreetMap_0');
     map.getPane('pane_OpenStreetMap_0').style.zIndex = 400;
-
     var layer_OpenStreetMap_0 = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      pane: 'pane_OpenStreetMap_0',
-      opacity: 1.0,
-      attribution: '',
-      minZoom: 1,
-      maxZoom: 28,
-      minNativeZoom: 0,
-      maxNativeZoom: 19
+      pane: 'pane_OpenStreetMap_0', opacity: 1.0, attribution: '',
+      minZoom: 1, maxZoom: 28, minNativeZoom: 0, maxNativeZoom: 19
     });
     map.addLayer(layer_OpenStreetMap_0);
 
+    /* ============================
+       CAPA 1: SECTORES CENSALES
+    ============================ */
     function style_sec_a_simplificado_1_0(feature) {
-      switch(String(feature.properties['sec_estrato_sector'])) {
-        case 'B':
-          return { pane:'pane_sec_a_simplificado_1', opacity:1, color:'rgba(35,35,35,1.0)', weight:1.0, fill:true, fillOpacity:1, fillColor:'rgba(49,200,89,0.25882352941176473)', interactive:true };
-        case 'C+':
-          return { pane:'pane_sec_a_simplificado_1', opacity:1, color:'rgba(35,35,35,1.0)', weight:1.0, fill:true, fillOpacity:1, fillColor:'rgba(223,57,181,0.26666666666666666)', interactive:true };
-        case 'C-':
-          return { pane:'pane_sec_a_simplificado_1', opacity:1, color:'rgba(35,35,35,1.0)', weight:1.0, fill:true, fillOpacity:1, fillColor:'rgba(105,131,215,0.25882352941176473)', interactive:true };
-        default:
-          return { pane:'pane_sec_a_simplificado_1', opacity:1, color:'rgba(35,35,35,1.0)', weight:1.0, fill:true, fillOpacity:1, fillColor:'rgba(225,178,35,1.0)', interactive:true };
-      }
+      var e = String(feature.properties['sec_estrato_sector'] || '');
+      var c = estratoColors(e);
+      return {
+        pane: 'pane_sec_a_simplificado_1',
+        opacity: 1,
+        color: 'rgba(35,35,35,1.0)',
+        weight: 1.0,
+        fill: true,
+        fillOpacity: 1,
+        fillColor: c.fill,
+        interactive: true
+      };
     }
 
     map.createPane('pane_sec_a_simplificado_1');
     map.getPane('pane_sec_a_simplificado_1').style.zIndex = 401;
     map.getPane('pane_sec_a_simplificado_1').style['mix-blend-mode'] = 'normal';
 
-    // POPUP PRO con Street View (igual a Guayaquil)
     function pop_sec_a_simplificado_1(feature, layer) {
       var p = feature.properties || {};
       var codPar = (p.parroquia != null ? String(p.parroquia).trim() : "");
@@ -420,46 +544,41 @@
         setTimeout(function(){ suppressNextMapClick = false; }, 0);
 
         var latlng = ev.latlng;
-
-        // marca punto y habilita sidebar
         setPoint(latlng);
-
-        // arma popup pro
         var sv = streetViewUrl(latlng.lat, latlng.lng);
 
         var html = ''
           + '<table style="width:100%;border-collapse:collapse">'
-          + '  <tr>'
-          + '    <th style="text-align:left;padding:6px 0;color:rgba(0,0,0,.62);font-size:12px;border-bottom:1px solid rgba(0,0,0,.08)">Campo</th>'
-          + '    <th style="text-align:left;padding:6px 0;color:rgba(0,0,0,.62);font-size:12px;border-bottom:1px solid rgba(0,0,0,.08)">Valor</th>'
-          + '  </tr>'
-          + '  <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>sec</b></td><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)">' + (p.sec != null ? autolinker.link(String(p.sec)) : '') + '</td></tr>'
-          + '  <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>parroquia</b></td><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)">'
-          +        (codPar ? autolinker.link(codPar) : '')
-          +        (nomPar && nomPar !== codPar ? ('<br><b>' + nomPar + '</b>') : '')
-          + '    </td></tr>'
-          + '  <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>estrato</b></td><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)">' + (p.sec_estrato_sector != null ? autolinker.link(String(p.sec_estrato_sector)) : '') + '</td></tr>'
-          + '  <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>hogares</b></td><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)">' + (p.sec_hogares != null ? autolinker.link(String(p.sec_hogares)) : '') + '</td></tr>'
-          + '  <tr><td style="padding:6px 0"><b>puntaje prom</b></td><td style="padding:6px 0">' + (p.sec_puntaje_prom != null ? autolinker.link(String(p.sec_puntaje_prom)) : '') + '</td></tr>'
+          + '  <tr><th style="text-align:left;padding:6px 0;color:rgba(0,0,0,.62);font-size:12px;border-bottom:1px solid rgba(0,0,0,.08)">Campo</th>'
+          + '      <th style="text-align:left;padding:6px 0;color:rgba(0,0,0,.62);font-size:12px;border-bottom:1px solid rgba(0,0,0,.08)">Valor</th></tr>'
+          + '  <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>sec</b></td>'
+          + '      <td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)">' + (p.sec != null ? autolinker.link(String(p.sec)) : '') + '</td></tr>'
+          + '  <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>parroquia</b></td>'
+          + '      <td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)">'
+          +          (codPar ? autolinker.link(codPar) : '')
+          +          (nomPar && nomPar !== codPar ? ('<br><b>' + nomPar + '</b>') : '')
+          + '      </td></tr>'
+          + '  <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>estrato</b></td>'
+          + '      <td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)">' + (p.sec_estrato_sector != null ? autolinker.link(String(p.sec_estrato_sector)) : '') + '</td></tr>'
+          + '  <tr><td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>hogares</b></td>'
+          + '      <td style="padding:6px 0;border-bottom:1px dashed rgba(0,0,0,.08)">' + (p.sec_hogares != null ? autolinker.link(String(p.sec_hogares)) : '') + '</td></tr>'
+          + '  <tr><td style="padding:6px 0"><b>puntaje prom</b></td>'
+          + '      <td style="padding:6px 0">' + (p.sec_puntaje_prom != null ? autolinker.link(String(p.sec_puntaje_prom)) : '') + '</td></tr>'
           + '</table>'
-
           + '<div style="margin-top:10px;color:rgba(0,0,0,.62);font-size:12px;line-height:1.35">'
-          +   'Street View te muestra la vista a nivel de calle (si Google tiene cobertura) del entorno del punto marcado.'
+          +   'Street View muestra la vista a nivel de calle del entorno del punto.'
           + '</div>'
-
           + '<a href="' + sv + '" target="_blank" rel="noopener" '
           +   'style="display:inline-block;width:100%;text-align:center;padding:10px;border-radius:10px;'
           +          'background:#111827;color:#fff;text-decoration:none;font-weight:900;margin-top:10px">'
           +   'Ver Street View'
           + '</a>'
-
           + '<div style="margin-top:10px;color:rgba(0,0,0,.62);font-size:12px">'
           +   'Coordenadas: <b>' + fmtCoord(latlng.lat) + ', ' + fmtCoord(latlng.lng) + '</b>'
           + '</div>';
 
         if (layer.getPopup()) layer.setPopupContent(html);
         else layer.bindPopup(html, { maxWidth: 420, maxHeight: 520 });
-
         layer.openPopup(latlng);
       });
     }
@@ -475,36 +594,192 @@
     });
     map.addLayer(layer_sec_a_simplificado_1);
 
-    // =============================
-    // LAYERS TREE (igual a tu index original)
-    // =============================
+    /* ============================
+       CAPA 2: BARRIOS
+       (se activa solo cuando
+        json_barrios está cargado
+        y el usuario activa la capa)
+    ============================ */
+    var layer_barrios = null;
+    var barriosActivos = false;
+
+    function style_barrios(feature) {
+      /* Barrios: borde azul oscuro grueso, sin relleno.
+         Así los colores de los sectores se ven debajo. */
+      return {
+        pane: 'pane_barrios',
+        opacity: 1,
+        color: '#1d4ed8',
+        weight: 2.5,
+        fill: false,        /* sin relleno — el sector debajo se ve completo */
+        interactive: true
+      };
+    }
+
+    function popup_barrio_html(feature, latlng) {
+      var p = feature.properties || {};
+      var bp = getBarrioProp(p);
+      var nombre    = bp.nombre    || '(sin nombre)';
+      var estrato   = bp.estrato   || '—';
+      var hogares   = bp.hogares   != null ? fmtInt(Number(bp.hogares)) : '—';
+      var nSectores = bp.nSectores != null ? String(bp.nSectores)       : '—';
+
+      var sv = streetViewUrl(latlng.lat, latlng.lng);
+      var c  = estratoColors(estrato);
+
+      return ''
+        + '<div style="font-weight:900;font-size:15px;margin-bottom:8px;color:#1d4ed8">'
+        +   '🏘 ' + nombre
+        + '</div>'
+        + '<table style="width:100%;border-collapse:collapse">'
+        + '  <tr><th style="text-align:left;padding:5px 0;color:rgba(0,0,0,.62);font-size:12px;border-bottom:1px solid rgba(0,0,0,.08)">Campo</th>'
+        + '      <th style="text-align:left;padding:5px 0;color:rgba(0,0,0,.62);font-size:12px;border-bottom:1px solid rgba(0,0,0,.08)">Valor</th></tr>'
+        + '  <tr><td style="padding:5px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>Estrato</b></td>'
+        + '      <td style="padding:5px 0;border-bottom:1px dashed rgba(0,0,0,.08)">'
+        +          '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + c.border + ';margin-right:5px;vertical-align:middle"></span>'
+        +          '<b>' + estrato + '</b>'
+        + '      </td></tr>'
+        + '  <tr><td style="padding:5px 0;border-bottom:1px dashed rgba(0,0,0,.08)"><b>Hogares</b></td>'
+        + '      <td style="padding:5px 0;border-bottom:1px dashed rgba(0,0,0,.08)">' + hogares + '</td></tr>'
+        + '  <tr><td style="padding:5px 0"><b>Sectores</b></td>'
+        + '      <td style="padding:5px 0">' + nSectores + '</td></tr>'
+        + '</table>'
+        + '<a href="' + sv + '" target="_blank" rel="noopener" '
+        +   'style="display:inline-block;width:100%;text-align:center;padding:9px;border-radius:10px;'
+        +          'background:#1d4ed8;color:#fff;text-decoration:none;font-weight:900;margin-top:10px">'
+        +   'Ver Street View'
+        + '</a>'
+        + '<div style="margin-top:8px;color:rgba(0,0,0,.62);font-size:12px">'
+        +   'Coordenadas: <b>' + fmtCoord(latlng.lat) + ', ' + fmtCoord(latlng.lng) + '</b>'
+        + '</div>';
+    }
+
+    function onEachBarrio(feature, layer) {
+      var p  = feature.properties || {};
+      var bp = getBarrioProp(p);
+      var nombre = bp.nombre || '(sin nombre)';
+
+      /* Tooltip al pasar el cursor — muestra nombre del barrio */
+      layer.bindTooltip(nombre, {
+        permanent: false,
+        direction: 'center',
+        className: 'barrio-tooltip',
+        sticky: true
+      });
+
+      layer.on('click', function(ev) {
+        suppressNextMapClick = true;
+        setTimeout(function(){ suppressNextMapClick = false; }, 0);
+
+        var latlng = ev.latlng;
+        setPoint(latlng);
+        var html = popup_barrio_html(feature, latlng);
+
+        if (layer.getPopup()) layer.setPopupContent(html);
+        else layer.bindPopup(html, { maxWidth: 400, maxHeight: 480 });
+        layer.openPopup(latlng);
+      });
+    }
+
+    function initBarriosLayer() {
+      /* Solo se puede crear si el archivo barrios.js está cargado */
+      if (typeof json_barrios === 'undefined') {
+        alert('⚠️ La capa de barrios aún no está cargada.\n\nSigue las instrucciones en el index.html para exportar barrios.js desde QGIS y subirlo a la carpeta data/.');
+        return false;
+      }
+
+      if (!layer_barrios) {
+        map.createPane('pane_barrios');
+        map.getPane('pane_barrios').style.zIndex = 402;
+
+        layer_barrios = new L.geoJson(json_barrios, {
+          pane: 'pane_barrios',
+          interactive: true,
+          style: style_barrios,
+          onEachFeature: onEachBarrio
+        });
+      }
+      return true;
+    }
+
+    /* ============================
+       Lógica del toggle de capas
+    ============================ */
+    function actualizarToggleUI() {
+      var btnS = document.getElementById('btnCapaSectores');
+      var btnB = document.getElementById('btnCapaBarrios');
+      var leyenda = document.getElementById('leyendaBarrioWrap');
+      var info    = document.getElementById('barriosInfo');
+
+      if (barriosActivos) {
+        btnS.classList.remove('primary'); btnS.classList.add('active');
+        btnB.classList.add('primary');    btnB.classList.remove('active');
+        leyenda.style.display = 'flex';
+        info.textContent = 'Pasa el cursor por el mapa para ver el nombre de cada barrio. Haz clic para ver el detalle.';
+      } else {
+        btnS.classList.add('primary');    btnS.classList.remove('active');
+        btnB.classList.remove('primary'); btnB.classList.remove('active');
+        leyenda.style.display = 'none';
+        info.textContent = 'Activa la capa de barrios para ver los límites en el mapa.';
+      }
+    }
+
+    document.getElementById('btnCapaBarrios').addEventListener('click', function() {
+      if (barriosActivos) {
+        /* desactivar */
+        if (layer_barrios) map.removeLayer(layer_barrios);
+        barriosActivos = false;
+      } else {
+        /* activar */
+        if (!initBarriosLayer()) return;
+        map.addLayer(layer_barrios);
+        barriosActivos = true;
+      }
+      actualizarToggleUI();
+    });
+
+    document.getElementById('btnCapaSectores').addEventListener('click', function() {
+      /* Sectores siempre visibles (ya están agregados); el botón solo
+         desactiva barrios si estaban activos */
+      if (barriosActivos) {
+        if (layer_barrios) map.removeLayer(layer_barrios);
+        barriosActivos = false;
+        actualizarToggleUI();
+      }
+    });
+
+    actualizarToggleUI(); /* estado inicial */
+
+    /* ============================
+       LAYERS TREE
+    ============================ */
     var overlaysTree = [
-      {label: 'sec_a_simplificado<br /><table><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_B0.png" /></td><td>B</td></tr><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_C1.png" /></td><td>C+</td></tr><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_C2.png" /></td><td>C-</td></tr><tr><td style="text-align: center;"><img src="legend/sec_a_simplificado_1_3.png" /></td><td></td></tr></table>', layer: layer_sec_a_simplificado_1},
-      {label: "OpenStreetMap", layer: layer_OpenStreetMap_0, radioGroup: 'bm' }
+      {
+        label: 'sec_a_simplificado<br />'
+          + '<table>'
+          + '<tr><td style="text-align:center"><img src="legend/sec_a_simplificado_1_B0.png" /></td><td>B</td></tr>'
+          + '<tr><td style="text-align:center"><img src="legend/sec_a_simplificado_1_C1.png" /></td><td>C+</td></tr>'
+          + '<tr><td style="text-align:center"><img src="legend/sec_a_simplificado_1_C2.png" /></td><td>C-</td></tr>'
+          + '<tr><td style="text-align:center"><img src="legend/sec_a_simplificado_1_3.png" /></td><td></td></tr>'
+          + '</table>',
+        layer: layer_sec_a_simplificado_1
+      },
+      { label: "OpenStreetMap", layer: layer_OpenStreetMap_0, radioGroup: 'bm' }
     ];
     var lay = L.control.layers.tree(null, overlaysTree, { collapsed: true });
     lay.addTo(map);
 
-    // =============================
-    // DASHBOARD + FILTRO (igual a tu index original)
-    // =============================
+    /* ============================
+       DASHBOARD + FILTRO
+    ============================ */
     function toNumber(x) {
       if (x == null) return 0;
       var n = Number(String(x).replace(',', '.'));
       return Number.isFinite(n) ? n : 0;
     }
-
     function normCat(x) {
       if (x == null) return '';
       return String(x).trim();
-    }
-
-    function fmtInt(n) {
-      return new Intl.NumberFormat('es-EC', { maximumFractionDigits: 0 }).format(n);
-    }
-
-    function fmtPct(n) {
-      return new Intl.NumberFormat('es-EC', { maximumFractionDigits: 1 }).format(n) + '%';
     }
 
     function getAllCategories() {
@@ -521,8 +796,7 @@
       (json_sec_a_simplificado_1.features || []).forEach(function(f) {
         var p = f.properties || {};
         var cat = normCat(p.sec_estrato_sector) || '(Sin categoría)';
-        var h = toNumber(p.sec_hogares);
-        out[cat] = (out[cat] || 0) + h;
+        out[cat] = (out[cat] || 0) + toNumber(p.sec_hogares);
       });
       return out;
     }
@@ -552,9 +826,7 @@
       (json_sec_a_simplificado_1.features || []).forEach(function(f) {
         var p = f.properties || {};
         var cat = normCat(p.sec_estrato_sector);
-        if (catFilter === '__ALL__' || cat === catFilter) {
-          t += toNumber(p.sec_hogares);
-        }
+        if (catFilter === '__ALL__' || cat === catFilter) t += toNumber(p.sec_hogares);
       });
       return t;
     }
@@ -563,69 +835,65 @@
       layer_sec_a_simplificado_1.setStyle(function(feature) {
         var base = style_sec_a_simplificado_1_0(feature);
         if (catFilter === '__ALL__') return base;
-
         var cat = normCat(feature.properties && feature.properties.sec_estrato_sector);
-        if (cat === catFilter) {
-          return Object.assign({}, base, { fillOpacity: 0.65, opacity: 1 });
-        }
+        if (cat === catFilter) return Object.assign({}, base, { fillOpacity: 0.65, opacity: 1 });
         return Object.assign({}, base, { fillOpacity: 0.06, opacity: 0.2 });
       });
+
+      /* También filtra la capa de barrios si está activa */
+      if (layer_barrios) {
+        layer_barrios.setStyle(function(feature) {
+          var p  = feature.properties || {};
+          var bp = getBarrioProp(p);
+          var e  = normCat(bp.estrato);
+          var base = style_barrios(feature);
+          if (catFilter === '__ALL__') return base;
+          if (e === catFilter) return Object.assign({}, base, { opacity: 1, weight: 3.0 });
+          return Object.assign({}, base, { opacity: 0.15, weight: 1.0 });
+        });
+      }
     }
 
     function renderDashboard(catFilter) {
       var total = totalHogaresGlobal();
-      var hf = hogaresByFilter(catFilter);
-      var pct = total > 0 ? (hf / total) * 100 : 0;
+      var hf    = hogaresByFilter(catFilter);
+      var pct   = total > 0 ? (hf / total) * 100 : 0;
 
       document.getElementById('kpiHogaresTotal').textContent = fmtInt(total);
       document.getElementById('kpiHogaresFiltro').textContent = fmtInt(hf);
       document.getElementById('kpiPctFiltro').textContent = fmtPct(pct);
-
-      var pill = (catFilter === '__ALL__') ? 'Todos' : catFilter;
-      document.getElementById('pillFiltro').textContent = pill;
+      document.getElementById('pillFiltro').textContent = (catFilter === '__ALL__') ? 'Todos' : catFilter;
 
       var tb = document.getElementById('tablaEstratos');
       tb.innerHTML = '';
       var byCat = totalsByCategory();
-
       Object.keys(byCat).sort().forEach(function(cat) {
-        var hogares = byCat[cat];
-        var p = total > 0 ? (hogares / total) * 100 : 0;
+        var h = byCat[cat];
+        var p = total > 0 ? (h / total) * 100 : 0;
         var tr = document.createElement('tr');
-        tr.innerHTML = '<td><b>' + cat + '</b></td><td>' + fmtInt(hogares) + '</td><td>' + fmtPct(p) + '</td>';
+        tr.innerHTML = '<td><b>' + cat + '</b></td><td>' + fmtInt(h) + '</td><td>' + fmtPct(p) + '</td>';
         tb.appendChild(tr);
       });
 
       var cods = uniqueParroquiasByFilter(catFilter);
-
-      cods.sort(function(a,b){
-        var na = parroquiaNombre(a).toLowerCase();
-        var nb = parroquiaNombre(b).toLowerCase();
-        if (na < nb) return -1;
-        if (na > nb) return 1;
-        return String(a).localeCompare(String(b));
+      cods.sort(function(a, b) {
+        var na = parroquiaNombre(a).toLowerCase(), nb = parroquiaNombre(b).toLowerCase();
+        return na < nb ? -1 : na > nb ? 1 : String(a).localeCompare(String(b));
       });
 
       var ul = document.getElementById('listaParroquias');
       ul.innerHTML = '';
       if (cods.length === 0) {
-        var li = document.createElement('li');
-        li.className = 'muted';
-        li.textContent = 'No hay parroquias para este filtro.';
-        ul.appendChild(li);
+        var li = document.createElement('li'); li.className = 'muted';
+        li.textContent = 'No hay parroquias para este filtro.'; ul.appendChild(li);
       } else {
         cods.slice(0, 120).forEach(function(cod) {
-          var li = document.createElement('li');
-          li.className = 'tag';
-          li.title = String(cod);
-          li.textContent = parroquiaNombre(cod);
-          ul.appendChild(li);
+          var li = document.createElement('li'); li.className = 'tag';
+          li.title = String(cod); li.textContent = parroquiaNombre(cod); ul.appendChild(li);
         });
         if (cods.length > 120) {
-          var liMore = document.createElement('li');
-          liMore.className = 'muted';
-          liMore.textContent = '… + ' + (cods.length - 120) + ' más';
-          ul.appendChild(liMore);
+          var liMore = document.createElement('li'); liMore.className = 'muted';
+          liMore.textContent = '… + ' + (cods.length - 120) + ' más'; ul.appendChild(liMore);
         }
       }
     }
@@ -633,10 +901,7 @@
     (function initUI() {
       var sel = document.getElementById('filtroEstrato');
       getAllCategories().forEach(function(cat) {
-        var opt = document.createElement('option');
-        opt.value = cat;
-        opt.textContent = cat;
-        sel.appendChild(opt);
+        var opt = document.createElement('option'); opt.value = cat; opt.textContent = cat; sel.appendChild(opt);
       });
 
       function doApply() {
@@ -646,20 +911,15 @@
       }
 
       document.getElementById('btnAplicar').addEventListener('click', doApply);
-      document.getElementById('btnReset').addEventListener('click', function() {
-        sel.value = '__ALL__';
-        doApply();
-      });
-
+      document.getElementById('btnReset').addEventListener('click', function() { sel.value = '__ALL__'; doApply(); });
       sel.addEventListener('change', doApply);
-
       applyFilterToLayer('__ALL__');
       renderDashboard('__ALL__');
     })();
 
-    // =============================
-    // UI "Ir a un punto" + Street View
-    // =============================
+    /* ============================
+       Ir a un punto + Street View
+    ============================ */
     document.getElementById('btnIr').addEventListener('click', function(){
       var latlng = parseLatLon(document.getElementById('inpLatLon').value);
       if (!latlng) return alert("Formato inválido. Usa: lat, lon (ej: -0.2201, -78.5123)");
@@ -670,15 +930,10 @@
     });
 
     document.getElementById('btnCopiarLink').addEventListener('click', async function(){
-      var z = map.getZoom();
-      var c = map.getCenter();
+      var z = map.getZoom(), c = map.getCenter();
       var link = location.origin + location.pathname + "#" + z + "/" + fmtCoord(c.lat) + "/" + fmtCoord(c.lng);
-      try{
-        await navigator.clipboard.writeText(link);
-        alert("Link copiado ✅");
-      }catch(e){
-        prompt("Copia el link:", link);
-      }
+      try { await navigator.clipboard.writeText(link); alert("Link copiado ✅"); }
+      catch(e) { prompt("Copia el link:", link); }
     });
 
     document.getElementById('btnStreet').addEventListener('click', function(){
@@ -686,7 +941,6 @@
       window.open(streetViewUrl(lastPointLatLng.lat, lastPointLatLng.lng), "_blank", "noopener");
     });
 
-    // Click en mapa (solo si NO fue click de polígono)
     map.on('click', function(ev){
       if (suppressNextMapClick) return;
       setPoint(ev.latlng);
