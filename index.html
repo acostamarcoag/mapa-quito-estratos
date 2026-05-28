@@ -247,6 +247,13 @@
         <ul class="list" id="listaParroquias"></ul>
       </div>
 
+      <!-- BARRIOS -->
+      <div class="card">
+        <div class="h1" style="font-size:14px;margin-bottom:6px">Barrios dentro del filtro</div>
+        <div class="muted">Estrato dominante por barrio. <b id="conteoBarrios"></b></div>
+        <ul class="list" id="listaBarrios"></ul>
+      </div>
+
       <!-- IR A UN PUNTO -->
       <div class="card">
         <div class="h1" style="font-size:14px;margin-bottom:6px">Ir a un punto</div>
@@ -854,6 +861,54 @@
       }
     }
 
+    function renderBarrios(catFilter) {
+      var ul = document.getElementById('listaBarrios');
+      var conteo = document.getElementById('conteoBarrios');
+      ul.innerHTML = '';
+      if (typeof json_barrios === 'undefined') {
+        conteo.textContent = '';
+        var li = document.createElement('li');
+        li.className = 'muted';
+        li.textContent = 'Capa de barrios no cargada.';
+        ul.appendChild(li);
+        return;
+      }
+      var features = json_barrios.features || [];
+      var filtrados = features.filter(function(f) {
+        if (catFilter === '__ALL__') return true;
+        var bp = getBarrioProp(f.properties || {});
+        return normCat(bp.estrato) === catFilter;
+      });
+      filtrados.sort(function(a, b) {
+        var na = (getBarrioProp(a.properties || {}).nombre || '').toLowerCase();
+        var nb = (getBarrioProp(b.properties || {}).nombre || '').toLowerCase();
+        return na < nb ? -1 : na > nb ? 1 : 0;
+      });
+      conteo.textContent = filtrados.length + ' barrios';
+      if (filtrados.length === 0) {
+        var li = document.createElement('li');
+        li.className = 'muted';
+        li.textContent = 'No hay barrios para este filtro.';
+        ul.appendChild(li);
+        return;
+      }
+      filtrados.slice(0, 200).forEach(function(f) {
+        var bp = getBarrioProp(f.properties || {});
+        var nombre = bp.nombre || '(sin nombre)';
+        var li = document.createElement('li');
+        li.className = 'tag';
+        li.title = nombre;
+        li.textContent = nombre;
+        ul.appendChild(li);
+      });
+      if (filtrados.length > 200) {
+        var liMore = document.createElement('li');
+        liMore.className = 'muted';
+        liMore.textContent = '… + ' + (filtrados.length - 200) + ' más';
+        ul.appendChild(liMore);
+      }
+    }
+
     function renderDashboard(catFilter) {
       var total = totalHogaresGlobal();
       var hf    = hogaresByFilter(catFilter);
@@ -908,6 +963,7 @@
         var v = sel.value;
         applyFilterToLayer(v);
         renderDashboard(v);
+        renderBarrios(v);
       }
 
       document.getElementById('btnAplicar').addEventListener('click', doApply);
@@ -915,6 +971,7 @@
       sel.addEventListener('change', doApply);
       applyFilterToLayer('__ALL__');
       renderDashboard('__ALL__');
+      renderBarrios('__ALL__');
     })();
 
     /* ============================
