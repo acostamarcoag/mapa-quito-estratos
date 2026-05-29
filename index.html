@@ -924,21 +924,16 @@
       ul.innerHTML = '';
       if (typeof json_barrios === 'undefined') { conteo.textContent = ''; return; }
 
-      /* Obtener nombres de sectores que están en esa parroquia */
-      var nombresBarriosEnParroquia = new Set();
-      (json_sec_a_simplificado_1.features || []).forEach(function(f) {
-        var p = f.properties || {};
-        if (String(p.parroquia || '').trim() === String(codParroquia)) {
-          if (p.nombre) nombresBarriosEnParroquia.add(String(p.nombre).trim());
-        }
-      });
-
+      /* Filtrar barrios directamente por el campo parroquia en json_barrios */
       var features = json_barrios.features || [];
       var filtrados = features.filter(function(f) {
-        var bp = getBarrioProp(f.properties || {});
-        var nombre = String(bp.nombre || '').trim();
-        if (!nombresBarriosEnParroquia.has(nombre)) return false;
-        if (catFilter !== '__ALL__') return normCat(bp.estrato) === catFilter;
+        var p = f.properties || {};
+        var parBarrio = String(p.parroquia || '').trim();
+        if (parBarrio !== String(codParroquia).trim()) return false;
+        if (catFilter !== '__ALL__') {
+          var bp = getBarrioProp(p);
+          return normCat(bp.estrato) === catFilter;
+        }
         return true;
       });
 
