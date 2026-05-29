@@ -445,10 +445,10 @@
        Colores por estrato
     ============================ */
     var ESTRATO_COLORS = {
-      'B':   { fill: 'rgba(49,200,89,0.25)',  border: 'rgba(22,130,55,1)'   },
-      'C+':  { fill: 'rgba(223,57,181,0.27)', border: 'rgba(160,20,130,1)'  },
-      'C-':  { fill: 'rgba(105,131,215,0.26)',border: 'rgba(55,80,170,1)'   },
-      '__':  { fill: 'rgba(225,178,35,1)',     border: 'rgba(160,120,10,1)'  }
+      'B':   { fill: 'rgba(34,197,94,0.30)',   border: 'rgba(21,128,61,1)'   },
+      'C+':  { fill: 'rgba(234,179,8,0.35)',   border: 'rgba(161,98,7,1)'    },
+      'C-':  { fill: 'rgba(239,68,68,0.30)',   border: 'rgba(185,28,28,1)'   },
+      '__':  { fill: 'rgba(156,163,175,0.30)', border: 'rgba(75,85,99,1)'    }
     };
     function estratoColors(e) {
       return ESTRATO_COLORS[e] || ESTRATO_COLORS['__'];
@@ -528,8 +528,8 @@
       return {
         pane: 'pane_sec_a_simplificado_1',
         opacity: 1,
-        color: 'rgba(35,35,35,1.0)',
-        weight: 1.0,
+        color: 'rgba(35,35,35,0.6)',
+        weight: 0.8,
         fill: true,
         fillOpacity: 1,
         fillColor: c.fill,
