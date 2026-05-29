@@ -282,6 +282,21 @@
         </div>
       </div>
 
+      <!-- MIS PUNTOS GUARDADOS -->
+      <div class="card">
+        <div class="h1" style="font-size:14px;margin-bottom:4px">💾 Mis puntos guardados</div>
+        <div class="muted" style="margin-bottom:8px">Puntos que marcaste en el mapa. Clic para volar + Street View.</div>
+        <div id="listaPuntosGuardados"><span class="muted">Aún no tienes puntos guardados.</span></div>
+        <button class="btn" id="btnBorrarTodos" style="margin-top:8px;font-size:12px;display:none">🗑 Borrar todos</button>
+      </div>
+
+      <!-- PUNTOS DE COMPARACIÓN -->
+      <div class="card">
+        <div class="h1" style="font-size:14px;margin-bottom:4px">📍 Puntos de comparación</div>
+        <div class="muted" style="margin-bottom:10px">Clic para volar al punto y abrir Street View. Muestra la realidad urbana de cada estrato.</div>
+        <div id="listaPuntos"></div>
+      </div>
+
       <div class="card">
         <div class="muted">Autor: Econ. Marco Acosta G · Acosconsulting</div>
       </div>
@@ -582,7 +597,13 @@
           + '</a>'
           + '<div style="margin-top:10px;color:rgba(0,0,0,.62);font-size:12px">'
           +   'Coordenadas: <b>' + fmtCoord(latlng.lat) + ', ' + fmtCoord(latlng.lng) + '</b>'
-          + '</div>';
+          + '</div>'
+          + '<button onclick="(function(){'
+          +   'var n=prompt(\'Nombre para este punto:\', \'' + (p.sec_estrato_sector||'') + ' · ' + fmtCoord(latlng.lat) + '\');'
+          +   'if(n) agregarPuntoGuardado(n,' + latlng.lat + ',' + latlng.lng + ',\'' + (p.sec_estrato_sector||'') + '\');'
+          + '})()" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;cursor:pointer;font-weight:700;font-size:13px">'
+          + '💾 Guardar este punto'
+          + '</button>';
 
         if (layer.getPopup()) layer.setPopupContent(html);
         else layer.bindPopup(html, { maxWidth: 420, maxHeight: 520 });
@@ -1174,6 +1195,143 @@
       if (!lastPointLatLng) return;
       window.open(streetViewUrl(lastPointLatLng.lat, lastPointLatLng.lng), "_blank", "noopener");
     });
+
+    /* ============================
+       PUNTOS DE COMPARACIÓN
+       Edita este array para ajustar
+       los puntos según tu análisis
+    ============================ */
+    /* ============================
+       MIS PUNTOS GUARDADOS (localStorage)
+    ============================ */
+    function cargarPuntosGuardados() {
+      try { return JSON.parse(localStorage.getItem('puntos_mapa') || '[]'); }
+      catch(e) { return []; }
+    }
+
+    function guardarPuntos(puntos) {
+      try { localStorage.setItem('puntos_mapa', JSON.stringify(puntos)); } catch(e) {}
+    }
+
+    function agregarPuntoGuardado(nombre, lat, lng, estrato) {
+      var puntos = cargarPuntosGuardados();
+      puntos.push({ nombre: nombre, lat: lat, lng: lng, estrato: estrato || '', fecha: new Date().toLocaleDateString('es-EC') });
+      guardarPuntos(puntos);
+      renderPuntosGuardados();
+    }
+
+    function eliminarPuntoGuardado(idx) {
+      var puntos = cargarPuntosGuardados();
+      puntos.splice(idx, 1);
+      guardarPuntos(puntos);
+      renderPuntosGuardados();
+    }
+
+    function renderPuntosGuardados() {
+      var puntos = cargarPuntosGuardados();
+      var cont = document.getElementById('listaPuntosGuardados');
+      var btnBorrar = document.getElementById('btnBorrarTodos');
+      cont.innerHTML = '';
+
+      if (puntos.length === 0) {
+        cont.innerHTML = '<span class="muted">Aún no tienes puntos guardados.</span>';
+        btnBorrar.style.display = 'none';
+        return;
+      }
+
+      btnBorrar.style.display = 'block';
+      puntos.forEach(function(pt, idx) {
+        var badge = ESTRATO_BADGE[pt.estrato] || { bg:'#f3f4f6', color:'#374151', label: pt.estrato || '?' };
+        var div = document.createElement('div');
+        div.style.cssText = 'display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px dashed rgba(0,0,0,.08);';
+
+        var spanBadge = pt.estrato
+          ? '<span style="flex-shrink:0;padding:2px 7px;border-radius:999px;font-size:11px;font-weight:800;background:' + badge.bg + ';color:' + badge.color + '">' + badge.label + '</span>'
+          : '';
+
+        div.innerHTML = spanBadge
+          + '<span style="font-size:13px;flex:1;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + pt.nombre + '">' + pt.nombre + '</span>'
+          + '<span style="font-size:11px;color:rgba(0,0,0,.4);flex-shrink:0">' + (pt.fecha || '') + '</span>'
+          + '<button style="flex-shrink:0;background:none;border:none;cursor:pointer;font-size:15px;padding:0 2px" title="Eliminar">🗑</button>';
+
+        /* Volar al punto al clic en el nombre */
+        div.querySelector('span[style*="cursor:pointer"]').addEventListener('click', function() {
+          var latlng = L.latLng(pt.lat, pt.lng);
+          map.setView(latlng, 17);
+          setPoint(latlng);
+          window.open(streetViewUrl(pt.lat, pt.lng), '_blank', 'noopener');
+        });
+
+        /* Eliminar */
+        div.querySelector('button').addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (confirm('¿Eliminar "' + pt.nombre + '"?')) eliminarPuntoGuardado(idx);
+        });
+
+        cont.appendChild(div);
+      });
+    }
+
+    document.getElementById('btnBorrarTodos').addEventListener('click', function() {
+      if (confirm('¿Borrar todos los puntos guardados?')) {
+        guardarPuntos([]);
+        renderPuntosGuardados();
+      }
+    });
+
+    renderPuntosGuardados();
+
+    var puntosCmp = [
+      /* ESTRATO B */
+      { nombre: 'Cumbayá — El Arenal',    estrato:'B',  lat:-0.1903, lng:-78.4318, zoom:17 },
+      { nombre: 'Nayón — Urb. Las Bromelias', estrato:'B',  lat:-0.1762, lng:-78.4513, zoom:17 },
+      { nombre: 'González Suárez',         estrato:'B',  lat:-0.2113, lng:-78.4851, zoom:17 },
+      /* ESTRATO C+ */
+      { nombre: 'La Floresta',             estrato:'C+', lat:-0.2068, lng:-78.4823, zoom:17 },
+      { nombre: 'Cotocollao',              estrato:'C+', lat:-0.1378, lng:-78.5083, zoom:17 },
+      /* ESTRATO C- */
+      { nombre: 'Solanda — Mercado',       estrato:'C-', lat:-0.2681, lng:-78.5472, zoom:17 },
+      { nombre: 'Guamaní',                 estrato:'C-', lat:-0.3215, lng:-78.5505, zoom:17 },
+      { nombre: 'La Ecuatoriana',          estrato:'C-', lat:-0.2826, lng:-78.5718, zoom:17 }
+    ];
+
+    var ESTRATO_BADGE = {
+      'B':  { bg:'#dcfce7', color:'#15803d', label:'B'  },
+      'C+': { bg:'#fef9c3', color:'#a16207', label:'C+' },
+      'C-': { bg:'#fee2e2', color:'#b91c1c', label:'C-' }
+    };
+
+    function renderPuntosCmp() {
+      var cont = document.getElementById('listaPuntos');
+      cont.innerHTML = '';
+      puntosCmp.forEach(function(pt) {
+        var badge = ESTRATO_BADGE[pt.estrato] || { bg:'#f3f4f6', color:'#374151', label:pt.estrato };
+        var div = document.createElement('div');
+        div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed rgba(0,0,0,.08);cursor:pointer;';
+        div.innerHTML =
+          '<span style="flex-shrink:0;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;background:' + badge.bg + ';color:' + badge.color + '">' + badge.label + '</span>'
+          + '<span style="font-size:13px;flex:1">' + pt.nombre + '</span>'
+          + '<span style="font-size:18px;flex-shrink:0">🔍</span>';
+
+        div.title = 'Ver ' + pt.nombre + ' en Street View';
+        div.addEventListener('mouseenter', function(){ div.style.background='rgba(0,0,0,.03)'; });
+        div.addEventListener('mouseleave', function(){ div.style.background=''; });
+
+        div.addEventListener('click', function() {
+          /* Volar al punto */
+          var latlng = L.latLng(pt.lat, pt.lng);
+          map.setView(latlng, pt.zoom);
+          setPoint(latlng);
+          /* Abrir Street View */
+          var sv = streetViewUrl(pt.lat, pt.lng);
+          window.open(sv, '_blank', 'noopener');
+        });
+
+        cont.appendChild(div);
+      });
+    }
+
+    renderPuntosCmp();
 
     map.on('click', function(ev){
       if (suppressNextMapClick) return;
