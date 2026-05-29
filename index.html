@@ -861,6 +861,46 @@
       }
     }
 
+    /* ============================
+       Volar a un barrio desde el listado
+    ============================ */
+    function flyToBarrio(nombre) {
+      /* Activa la capa si no estaba activa */
+      if (!barriosActivos) {
+        if (!initBarriosLayer()) return;
+        map.addLayer(layer_barrios);
+        barriosActivos = true;
+        actualizarToggleUI();
+      }
+
+      var found = null;
+      layer_barrios.eachLayer(function(l) {
+        var bp = getBarrioProp(l.feature.properties || {});
+        if ((bp.nombre || '') === nombre) found = l;
+      });
+
+      if (!found) return;
+
+      /* Zoom al barrio */
+      var bounds = found.getBounds();
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+
+      /* Resaltar temporalmente */
+      var original = style_barrios(found.feature);
+      found.setStyle({ color: '#f59e0b', weight: 5, opacity: 1 });
+
+      setTimeout(function() {
+        found.setStyle(original);
+      }, 2000);
+
+      /* Abrir popup en el centro del barrio */
+      var center = bounds.getCenter();
+      var html = popup_barrio_html(found.feature, center);
+      if (found.getPopup()) found.setPopupContent(html);
+      else found.bindPopup(html, { maxWidth: 400, maxHeight: 480 });
+      found.openPopup();
+    }
+
     function renderBarrios(catFilter) {
       var ul = document.getElementById('listaBarrios');
       var conteo = document.getElementById('conteoBarrios');
@@ -897,8 +937,11 @@
         var nombre = bp.nombre || '(sin nombre)';
         var li = document.createElement('li');
         li.className = 'tag';
-        li.title = nombre;
+        li.title = 'Clic para ver en el mapa';
         li.textContent = nombre;
+        li.style.cursor = 'pointer';
+        li.style.borderColor = 'rgba(29,78,216,0.4)';
+        li.addEventListener('click', function() { flyToBarrio(nombre); });
         ul.appendChild(li);
       });
       if (filtrados.length > 200) {
