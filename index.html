@@ -1208,6 +1208,11 @@
     /* ============================
        MIS PUNTOS GUARDADOS (localStorage)
     ============================ */
+    var ESTRATO_BADGE = {
+      'B':  { bg:'#dcfce7', color:'#15803d', label:'B'  },
+      'C+': { bg:'#fef9c3', color:'#a16207', label:'C+' },
+      'C-': { bg:'#fee2e2', color:'#b91c1c', label:'C-' }
+    };
     function cargarPuntosGuardados() {
       try { return JSON.parse(localStorage.getItem('puntos_mapa') || '[]'); }
       catch(e) { return []; }
@@ -1316,11 +1321,7 @@
       { nombre: 'La Ecuatoriana',          estrato:'C-', lat:-0.2826, lng:-78.5718, zoom:17 }
     ];
 
-    var ESTRATO_BADGE = {
-      'B':  { bg:'#dcfce7', color:'#15803d', label:'B'  },
-      'C+': { bg:'#fef9c3', color:'#a16207', label:'C+' },
-      'C-': { bg:'#fee2e2', color:'#b91c1c', label:'C-' }
-    };
+
 
     function renderPuntosCmp() {
       var cont = document.getElementById('listaPuntos');
