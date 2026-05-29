@@ -598,12 +598,12 @@
           + '<div style="margin-top:10px;color:rgba(0,0,0,.62);font-size:12px">'
           +   'Coordenadas: <b>' + fmtCoord(latlng.lat) + ', ' + fmtCoord(latlng.lng) + '</b>'
           + '</div>'
-          + '<button onclick="(function(){'
-          +   'var n=prompt(\'Nombre para este punto:\', \'' + (p.sec_estrato_sector||'') + ' · ' + fmtCoord(latlng.lat) + '\');'
-          +   'if(n) agregarPuntoGuardado(n,' + latlng.lat + ',' + latlng.lng + ',\'' + (p.sec_estrato_sector||'') + '\');'
-          + '})()" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;cursor:pointer;font-weight:700;font-size:13px">'
+          + '<button onclick="guardarPuntoDesdePopup()" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;cursor:pointer;font-weight:700;font-size:13px">'
           + '💾 Guardar este punto'
           + '</button>';
+
+        /* Guardar referencia global al punto actual */
+        window._puntoPopup = { lat: latlng.lat, lng: latlng.lng, estrato: p.sec_estrato_sector || '' };
 
         if (layer.getPopup()) layer.setPopupContent(html);
         else layer.bindPopup(html, { maxWidth: 420, maxHeight: 520 });
@@ -1227,6 +1227,14 @@
       renderPuntosGuardados();
     }
 
+    window.guardarPuntoDesdePopup = function() {
+      var pt = window._puntoPopup;
+      if (!pt) return;
+      var sugerido = (pt.estrato ? pt.estrato + ' · ' : '') + fmtCoord(pt.lat) + ', ' + fmtCoord(pt.lng);
+      var nombre = prompt('Nombre para este punto:', sugerido);
+      if (nombre) agregarPuntoGuardado(nombre, pt.lat, pt.lng, pt.estrato);
+    };
+
     function renderPuntosGuardados() {
       var puntos = cargarPuntosGuardados();
       var cont = document.getElementById('listaPuntosGuardados');
@@ -1259,7 +1267,6 @@
           var latlng = L.latLng(pt.lat, pt.lng);
           map.setView(latlng, 17);
           setPoint(latlng);
-          window.open(streetViewUrl(pt.lat, pt.lng), '_blank', 'noopener');
         });
 
         /* Eliminar */
