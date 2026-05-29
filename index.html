@@ -280,6 +280,7 @@
         <div class="tip">
           Tip: también puedes hacer clic en el mapa para marcar un punto y habilitar Street View.
         </div>
+        <button class="btn" id="btnGuardarPunto" disabled style="margin-top:10px;width:100%">💾 Guardar punto marcado</button>
       </div>
 
       <!-- MIS PUNTOS GUARDADOS -->
@@ -598,12 +599,10 @@
           + '<div style="margin-top:10px;color:rgba(0,0,0,.62);font-size:12px">'
           +   'Coordenadas: <b>' + fmtCoord(latlng.lat) + ', ' + fmtCoord(latlng.lng) + '</b>'
           + '</div>'
-          + '<button onclick="guardarPuntoDesdePopup()" style="width:100%;margin-top:8px;padding:9px;border-radius:10px;border:1px solid rgba(0,0,0,.15);background:#fff;cursor:pointer;font-weight:700;font-size:13px">'
-          + '💾 Guardar este punto'
-          + '</button>';
-
-        /* Guardar referencia global al punto actual */
-        window._puntoPopup = { lat: latlng.lat, lng: latlng.lng, estrato: p.sec_estrato_sector || '' };
+;
+        /* Guardar referencia global al punto actual para el botón del sidebar */
+        window._puntoPopup = { lat: latlng.lat, lng: latlng.lng, estrato: String(p.sec_estrato_sector || '') };
+        document.getElementById('btnGuardarPunto').disabled = false;
 
         if (layer.getPopup()) layer.setPopupContent(html);
         else layer.bindPopup(html, { maxWidth: 420, maxHeight: 520 });
@@ -1288,6 +1287,17 @@
 
     renderPuntosGuardados();
 
+    document.getElementById('btnGuardarPunto').addEventListener('click', function() {
+      var pt = window._puntoPopup || (lastPointLatLng ? { lat: lastPointLatLng.lat, lng: lastPointLatLng.lng, estrato: '' } : null);
+      if (!pt) return;
+      var sugerido = (pt.estrato ? pt.estrato + ' · ' : '') + fmtCoord(pt.lat) + ', ' + fmtCoord(pt.lng);
+      var nombre = prompt('Nombre para este punto:', sugerido);
+      if (nombre) {
+        agregarPuntoGuardado(nombre, pt.lat, pt.lng, pt.estrato);
+        alert('Punto guardado ✅');
+      }
+    });
+
     var puntosCmp = [
       /* ESTRATO B */
       { nombre: 'Cumbayá — El Arenal',    estrato:'B',  lat:-0.1903, lng:-78.4318, zoom:17 },
@@ -1343,6 +1353,8 @@
     map.on('click', function(ev){
       if (suppressNextMapClick) return;
       setPoint(ev.latlng);
+      window._puntoPopup = { lat: ev.latlng.lat, lng: ev.latlng.lng, estrato: '' };
+      document.getElementById('btnGuardarPunto').disabled = false;
     });
 
   </script>
