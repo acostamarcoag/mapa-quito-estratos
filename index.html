@@ -280,7 +280,10 @@
         <div class="tip">
           Tip: también puedes hacer clic en el mapa para marcar un punto y habilitar Street View.
         </div>
-        <button class="btn" id="btnGuardarPunto" disabled style="margin-top:10px;width:100%">💾 Guardar punto marcado</button>
+        <div id="guardarPuntoWrap" style="margin-top:10px;display:none">
+          <input id="inpNombrePunto" type="text" placeholder="Nombre del punto..." style="margin-bottom:6px"/>
+          <button class="btn primary" id="btnGuardarPunto" style="width:100%">💾 Guardar</button>
+        </div>
       </div>
 
       <!-- MIS PUNTOS GUARDADOS -->
@@ -602,7 +605,9 @@
 ;
         /* Guardar referencia global al punto actual para el botón del sidebar */
         window._puntoPopup = { lat: latlng.lat, lng: latlng.lng, estrato: String(p.sec_estrato_sector || '') };
-        document.getElementById('btnGuardarPunto').disabled = false;
+        var wrap = document.getElementById('guardarPuntoWrap');
+        wrap.style.display = 'block';
+        document.getElementById('inpNombrePunto').value = String(p.sec_estrato_sector || '') + ' · ' + fmtCoord(latlng.lat) + ', ' + fmtCoord(latlng.lng);
 
         if (layer.getPopup()) layer.setPopupContent(html);
         else layer.bindPopup(html, { maxWidth: 420, maxHeight: 520 });
@@ -1290,12 +1295,11 @@
     document.getElementById('btnGuardarPunto').addEventListener('click', function() {
       var pt = window._puntoPopup || (lastPointLatLng ? { lat: lastPointLatLng.lat, lng: lastPointLatLng.lng, estrato: '' } : null);
       if (!pt) return;
-      var sugerido = (pt.estrato ? pt.estrato + ' · ' : '') + fmtCoord(pt.lat) + ', ' + fmtCoord(pt.lng);
-      var nombre = prompt('Nombre para este punto:', sugerido);
-      if (nombre) {
-        agregarPuntoGuardado(nombre, pt.lat, pt.lng, pt.estrato);
-        alert('Punto guardado ✅');
-      }
+      var nombre = document.getElementById('inpNombrePunto').value.trim();
+      if (!nombre) { document.getElementById('inpNombrePunto').focus(); return; }
+      agregarPuntoGuardado(nombre, pt.lat, pt.lng, pt.estrato);
+      document.getElementById('inpNombrePunto').value = '';
+      document.getElementById('guardarPuntoWrap').style.display = 'none';
     });
 
     var puntosCmp = [
@@ -1354,7 +1358,9 @@
       if (suppressNextMapClick) return;
       setPoint(ev.latlng);
       window._puntoPopup = { lat: ev.latlng.lat, lng: ev.latlng.lng, estrato: '' };
-      document.getElementById('btnGuardarPunto').disabled = false;
+      var wrap = document.getElementById('guardarPuntoWrap');
+      wrap.style.display = 'block';
+      document.getElementById('inpNombrePunto').value = fmtCoord(ev.latlng.lat) + ', ' + fmtCoord(ev.latlng.lng);
     });
 
   </script>
