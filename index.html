@@ -862,6 +862,111 @@
     }
 
     /* ============================
+       Volar a una parroquia desde el listado
+    ============================ */
+    var parroquiaActivaCod = null;  /* null = todas */
+
+    function flyToParroquia(codParroquia) {
+      var nombre = parroquiaNombre(codParroquia);
+
+      /* Recolectar bounds de todos los sectores de esa parroquia */
+      var bounds = null;
+      layer_sec_a_simplificado_1.eachLayer(function(l) {
+        var p = l.feature.properties || {};
+        if (String(p.parroquia || '').trim() === String(codParroquia)) {
+          var b = l.getBounds();
+          bounds = bounds ? bounds.extend(b) : b;
+        }
+      });
+
+      if (!bounds) return;
+
+      parroquiaActivaCod = String(codParroquia);
+
+      /* Zoom a la parroquia */
+      map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+
+      /* Resaltar sectores de esa parroquia */
+      var estratoCurrent = document.getElementById('filtroEstrato').value;
+      layer_sec_a_simplificado_1.setStyle(function(feature) {
+        var p = feature.properties || {};
+        var base = style_sec_a_simplificado_1_0(feature);
+        var esCodParroquia = String(p.parroquia || '').trim() === String(codParroquia);
+        var cat = normCat(p.sec_estrato_sector);
+        var pasaEstrato = (estratoCurrent === '__ALL__' || cat === estratoCurrent);
+
+        if (esCodParroquia && pasaEstrato) {
+          return Object.assign({}, base, { fillOpacity: 0.75, opacity: 1, weight: 1.2 });
+        }
+        return Object.assign({}, base, { fillOpacity: 0.06, opacity: 0.15 });
+      });
+
+      /* Filtrar lista de barrios por parroquia */
+      renderBarriosPorParroquia(codParroquia, estratoCurrent);
+
+      /* Actualizar indicador en sidebar */
+      document.getElementById('pillFiltro').textContent =
+        (estratoCurrent === '__ALL__' ? 'Todos' : estratoCurrent) + ' · ' + nombre;
+    }
+
+    function resetParroquia() {
+      parroquiaActivaCod = null;
+      var estratoCurrent = document.getElementById('filtroEstrato').value;
+      applyFilterToLayer(estratoCurrent);
+      renderBarrios(estratoCurrent);
+      var pill = estratoCurrent === '__ALL__' ? 'Todos' : estratoCurrent;
+      document.getElementById('pillFiltro').textContent = pill;
+    }
+
+    function renderBarriosPorParroquia(codParroquia, catFilter) {
+      var ul = document.getElementById('listaBarrios');
+      var conteo = document.getElementById('conteoBarrios');
+      ul.innerHTML = '';
+      if (typeof json_barrios === 'undefined') { conteo.textContent = ''; return; }
+
+      /* Obtener nombres de sectores que están en esa parroquia */
+      var nombresBarriosEnParroquia = new Set();
+      (json_sec_a_simplificado_1.features || []).forEach(function(f) {
+        var p = f.properties || {};
+        if (String(p.parroquia || '').trim() === String(codParroquia)) {
+          if (p.nombre) nombresBarriosEnParroquia.add(String(p.nombre).trim());
+        }
+      });
+
+      var features = json_barrios.features || [];
+      var filtrados = features.filter(function(f) {
+        var bp = getBarrioProp(f.properties || {});
+        var nombre = String(bp.nombre || '').trim();
+        if (!nombresBarriosEnParroquia.has(nombre)) return false;
+        if (catFilter !== '__ALL__') return normCat(bp.estrato) === catFilter;
+        return true;
+      });
+
+      filtrados.sort(function(a, b) {
+        var na = (getBarrioProp(a.properties || {}).nombre || '').toLowerCase();
+        var nb = (getBarrioProp(b.properties || {}).nombre || '').toLowerCase();
+        return na < nb ? -1 : na > nb ? 1 : 0;
+      });
+
+      conteo.textContent = filtrados.length + ' barrios';
+      if (filtrados.length === 0) {
+        var li = document.createElement('li'); li.className = 'muted';
+        li.textContent = 'No hay barrios para este filtro.'; ul.appendChild(li); return;
+      }
+      filtrados.forEach(function(f) {
+        var bp = getBarrioProp(f.properties || {});
+        var nombre = bp.nombre || '(sin nombre)';
+        var li = document.createElement('li'); li.className = 'tag';
+        li.title = 'Clic para ver en el mapa';
+        li.textContent = nombre;
+        li.style.cursor = 'pointer';
+        li.style.borderColor = 'rgba(29,78,216,0.4)';
+        li.addEventListener('click', function() { flyToBarrio(nombre); });
+        ul.appendChild(li);
+      });
+    }
+
+    /* ============================
        Volar a un barrio desde el listado
     ============================ */
     function flyToBarrio(nombre) {
@@ -987,7 +1092,12 @@
       } else {
         cods.slice(0, 120).forEach(function(cod) {
           var li = document.createElement('li'); li.className = 'tag';
-          li.title = String(cod); li.textContent = parroquiaNombre(cod); ul.appendChild(li);
+          li.title = 'Clic para ver barrios de ' + parroquiaNombre(cod);
+          li.textContent = parroquiaNombre(cod);
+          li.style.cursor = 'pointer';
+          li.style.borderColor = 'rgba(0,0,0,0.25)';
+          li.addEventListener('click', function() { flyToParroquia(cod); });
+          ul.appendChild(li);
         });
         if (cods.length > 120) {
           var liMore = document.createElement('li'); liMore.className = 'muted';
@@ -1010,7 +1120,7 @@
       }
 
       document.getElementById('btnAplicar').addEventListener('click', doApply);
-      document.getElementById('btnReset').addEventListener('click', function() { sel.value = '__ALL__'; doApply(); });
+      document.getElementById('btnReset').addEventListener('click', function() { sel.value = '__ALL__'; resetParroquia(); doApply(); });
       sel.addEventListener('change', doApply);
       applyFilterToLayer('__ALL__');
       renderDashboard('__ALL__');
